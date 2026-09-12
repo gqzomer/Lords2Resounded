@@ -1,0 +1,16 @@
+[project]
+name = "r2r"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "gqzomer",email = "gqzomer@gmail.com"}
+]
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "audiosr (>=0.0.7,<0.0.8)",
+    "deepfilternet (>=0.5.6,<0.6.0)"
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
