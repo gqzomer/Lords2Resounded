@@ -2,13 +2,15 @@
 name = "r2r"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "gqzomer",email = "gqzomer@gmail.com"}
-]
+authors = []
 requires-python = ">=3.10,<3.11"
 dependencies = [
-    "audiosr (>=0.0.7,<0.0.8)",
-    "deepfilternet (>=0.5.6,<0.6.0)"
+    "audiosr==0.0.7",
+    "deepfilternet==0.5.6",
+    "numpy==1.23.5",
+    "torch==2.2.2",
+    "torchaudio==2.2.2",
+    "torchvision==0.17.2"
 ]
 
 [build-system]

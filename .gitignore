@@ -1,2 +1,4 @@
 input_wavs/
 output_wavs/
+main.py
+__pycache__/
