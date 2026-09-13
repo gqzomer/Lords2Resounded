@@ -1,4 +1,2 @@
-input_wavs/
-output_wavs/
-main.py
+*_wavs/
 __pycache__/
