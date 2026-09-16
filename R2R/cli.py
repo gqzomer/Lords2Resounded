@@ -1,10 +1,10 @@
 import argparse
-from r2r_preprocess import preprocess
+from R2R import upsample
 
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Preprocess voice WAVs with DPDFNet before upsampling."
+        description="upsample wavs using audioSR"
     )
     parser.add_argument(
         "--input", "-i",
@@ -17,25 +17,21 @@ def build_parser():
         help="Folder to write enhanced .wav files to.",
     )
     parser.add_argument(
-        "--retention-threshold", "-t",
-        type=float,
-        default=0.8,
-        help=(
-            "If less than this fraction of the original's active content "
-            "survives enhancement, fall back to the 8kHz model (default: 0.5)."
-        ),
+        "--cutoff", "-c",
+        type=int,
+        default=5300,
+        help=("The overlap in seconds that should be used for crossfade stitching longer files")
     )
     return parser
 
 
 def main():
     args = build_parser().parse_args()
-    preprocess.preprocess_folder(
+    upsample.process_folder(
         input_folder=args.input,
         output_folder=args.output,
-        retention_threshold=args.retention_threshold,
+        cutoff=args.cutoff
     )
-
 
 if __name__ == "__main__":
     main()

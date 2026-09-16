@@ -1,15 +1,16 @@
 [project]
-name = "r2r-preprocess"
+name = "R2R"
 version = "0.1.0"
 description = ""
 authors = []
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.15"
 dependencies = [
-    "dpdfnet (>=0.6.0,<0.7.0)"
+    "dpdfnet (>=0.6.0,<0.7.0)",
+    "lavasr @ git+https://github.com/ysharma3501/LavaSR.git"
 ]
 
 [project.scripts]
-r2r-preprocess = "r2r_preprocess.cli:main"
+upsample = "R2R.cli:main"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
