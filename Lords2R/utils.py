@@ -1,13 +1,22 @@
-from LavaSR.model import LavaEnhance2
-import soundfile as sf
-import glob
-import os
-import dpdfnet
+"""Shared audio cleanup, model loading, and filename-list processing."""
+
+from functools import lru_cache
+from pathlib import Path
+from shutil import copy2
+from tempfile import TemporaryDirectory
+
 import numpy
+import soundfile as sf
 from scipy.ndimage import maximum_filter1d, median_filter, uniform_filter1d
 from scipy.signal import butter, istft, sosfiltfilt, stft
 
-lava_model = LavaEnhance2("YatharthS/LavaSR", "cpu")
+
+@lru_cache(maxsize=1)
+def get_lava_model():
+    from LavaSR.model import LavaEnhance2
+
+    return LavaEnhance2("YatharthS/LavaSR", "cpu")
+
 
 def remove_peaks(audio, ceiling=0.8912):
     peak = numpy.max(numpy.abs(audio))
@@ -182,42 +191,55 @@ def balance_lavasr_high_band(audio, original, cutoff=5300):
     return (audio - removed[:len(audio)]).astype(audio.dtype)
 
 
-def process_wav(input_path: str, output_path: str, cutoff: int):
-    input_audio, input_sr = lava_model.load_audio(input_path, cutoff=cutoff)
+def write_processed_audio(output_path, audio, reference, cutoff):
+    """Clean the 48 kHz output using its 16 kHz reference and save it."""
+    audio = suppress_lavasr_10khz_clicks(audio)
+    audio = balance_lavasr_high_band(audio, reference, cutoff)
+    audio = suppress_lavasr_hiss(audio)
+    sf.write(file=output_path, data=remove_peaks(audio), samplerate=48000)
 
-    output_audio = lava_model.enhance(
-        input_audio,
-        enhance=True,
-        denoise=False
-    ).cpu().numpy().squeeze()
 
-    output_audio = dpdfnet.enhance(output_audio, sample_rate=48000, model="dpdfnet8_48khz_hr")
+def process_listed_wavs(input_folder, file_list, process_wav, cutoff):
+    """Back up listed WAVs and replace them with output made from the originals."""
+    input_folder = Path(input_folder)
+    if not input_folder.is_dir():
+        raise NotADirectoryError(f"Input folder does not exist: {input_folder}")
 
-    output_audio = suppress_lavasr_10khz_clicks(output_audio)
-    output_audio = balance_lavasr_high_band(output_audio, input_audio.cpu().numpy().reshape(-1), cutoff)
-    output_audio = suppress_lavasr_hiss(output_audio)
-
-    sf.write(file=output_path, data=remove_peaks(output_audio), samplerate=48000)
-
-def process_folder(input_folder:str, output_folder:str, cutoff: int):
-    wav_paths = sorted(set(
-        glob.glob(os.path.join(input_folder, "*.wav"))
-        + glob.glob(os.path.join(input_folder, "*.WAV"))
+    filenames = list(dict.fromkeys(
+        line.strip()
+        for line in Path(file_list).read_text(encoding="utf-8").splitlines()
+        if line.strip()
     ))
-
-    if not wav_paths:
-        print(f"No .wav files found in {input_folder} — skipping.")
+    if not filenames:
+        print(f"No filenames in {file_list} — skipping.")
         return
 
-    os.makedirs(output_folder, exist_ok=True)
-
-    for path in wav_paths:
+    originals_folder = input_folder / "original_wavs"
+    originals_folder.mkdir(exist_ok=True)
+    for filename in filenames:
+        if Path(filename).name != filename or Path(filename).suffix.lower() != ".wav":
+            print(f"  Invalid WAV filename: {filename} — skipping.")
+            continue
+        path = input_folder / filename
+        if not path.is_file():
+            print(f"  Missing: {path} — skipping.")
+            continue
         print(f"processing: {path}")
         try:
-            out_path = os.path.join(output_folder, os.path.basename(path))
-            process_wav(path, out_path, cutoff)
-        except Exception as e:
-            print(f"  FAILED: {e}")
+            original_path = originals_folder / filename
+            with TemporaryDirectory(prefix=".upsample-", dir=input_folder) as temporary:
+                temporary = Path(temporary)
+                if not original_path.exists():
+                    # Finish the copy before making it the permanent backup.
+                    backup_path = temporary / "original.wav"
+                    copy2(path, backup_path)
+                    backup_path.replace(original_path)
+
+                # Repeated runs always start from the preserved original.
+                output_path = temporary / "enhanced.wav"
+                process_wav(str(original_path), str(output_path), cutoff)
+                # Replace the input only after processing and writing succeed.
+                output_path.replace(path)
+        except Exception as exc:
+            print(f"  FAILED: {exc}")
             print(f"  Skipping {path}, continuing with the rest of the batch.")
-            continue
-    

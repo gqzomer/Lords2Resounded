@@ -1,5 +1,5 @@
 [project]
-name = "R2R"
+name = "Lords2R"
 version = "0.1.0"
 description = ""
 authors = []
@@ -9,8 +9,11 @@ dependencies = [
     "lavasr @ git+https://github.com/ysharma3501/LavaSR.git"
 ]
 
+[tool.poetry]
+packages = [{ include = "Lords2R" }]
+
 [project.scripts]
-upsample = "R2R.cli:main"
+upsample = "Lords2R.cli:main"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
